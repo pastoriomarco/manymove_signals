@@ -102,6 +102,20 @@ namespace manymove_signals
             const std::shared_ptr<rclcpp_action::ServerGoalHandle<ResetRobotState>> goal_handle);
         void execute_reset_robot_state(
             const std::shared_ptr<rclcpp_action::ServerGoalHandle<ResetRobotState>> goal_handle);
-    };
+
+        // Helper functions:
+        void enable_motion(
+            const std::shared_ptr<rclcpp_action::ServerGoalHandle<ResetRobotState>> goal_handle,
+            std::shared_ptr<ResetRobotState::Result> result);
+        void set_mode(
+            const std::shared_ptr<rclcpp_action::ServerGoalHandle<ResetRobotState>> goal_handle,
+            std::shared_ptr<ResetRobotState::Result> result);
+        void set_state(
+            const std::shared_ptr<rclcpp_action::ServerGoalHandle<ResetRobotState>> goal_handle,
+            std::shared_ptr<ResetRobotState::Result> result);
+        void verify_reset(
+            const std::shared_ptr<rclcpp_action::ServerGoalHandle<ResetRobotState>> goal_handle,
+            std::shared_ptr<ResetRobotState::Result> result);
+        };
 
 } // namespace manymove_signals
