@@ -2,8 +2,8 @@
 <package format="3">
   <name>manymove_signals</name>
   <version>0.1.0</version>
-  <description>Action servers for handling I/O and system commands for manymove robots.</description>
-  <maintainer email="you@domain.com">Your Name</maintainer>
+  <description>Action servers for handling I/O and system commands for manymove_planner</description>
+  <maintainer email="pastoriomarco@gmail.com">pastoriomarco</maintainer>
   <license>Apache-2.0</license>
 
   <!-- Build dependencies -->
