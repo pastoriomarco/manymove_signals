@@ -1,5 +1,3 @@
-// include/manymove_signals/signals.hpp
-
 #pragma once
 
 #include <memory>

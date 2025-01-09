@@ -1,5 +1,3 @@
-// src/signals_node.cpp
-
 #include "manymove_signals/signals.hpp"
 
 using SetIO = manymove_signals::action::SetIO;

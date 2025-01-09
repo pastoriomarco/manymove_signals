@@ -1,7 +1,7 @@
 # Goal
-string io_type  # "tool" or "controller"
+string io_type # "tool" or "controller"
 int16 ionum
-int16 value
+int16 value # 1 for ON, 0 for OFF
 
 ---
 # Result

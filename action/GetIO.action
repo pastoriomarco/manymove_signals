@@ -4,7 +4,7 @@ int16 ionum
 
 ---
 # Result
-int16 value  # 1 for ON, 0 for OFF (inverted as per user requirements)
+int16 value  # 1 for ON, 0 for OFF
 bool success
 string message
 
