@@ -7,7 +7,7 @@ namespace manymove_signals
         : Node("manymove_signals_node")
     {
         // Declare and get parameters
-        this->declare_parameter<std::string>("robot_model", "lite6"); // default to lite6
+        this->declare_parameter<std::string>("robot_model", "lite6"); // defaults to lite6; TODO: add parameters for prefix
         this->get_parameter("robot_model", robot_model_);
 
         // Define Callback Groups
@@ -172,48 +172,54 @@ namespace manymove_signals
         auto serverOptions = rcl_action_server_get_default_options();
         serverOptions.result_service_qos = rmw_qos_profile_services_default;
 
-        // Action Server for SetIO
-        set_io_server_ = rclcpp_action::create_server<SetIO>(
+        // Action Server for SetOutput
+        set_output_server_ = rclcpp_action::create_server<SetOutput>(
             this->get_node_base_interface(),
             this->get_node_clock_interface(),
             this->get_node_logging_interface(),
             this->get_node_waitables_interface(),
-            "set_io",
+            "set_output",
+            // Goal Callback
             [this](const rclcpp_action::GoalUUID &uuid,
-                   std::shared_ptr<const SetIO::Goal> goal) -> rclcpp_action::GoalResponse
+                   std::shared_ptr<const SetOutput::Goal> goal) -> rclcpp_action::GoalResponse
             {
-                return this->handle_set_io_goal(uuid, goal);
+                return this->handle_set_output_goal(uuid, goal);
             },
-            [this](std::shared_ptr<rclcpp_action::ServerGoalHandle<SetIO>> goal_handle) -> rclcpp_action::CancelResponse
+            // Cancel Callback
+            [this](std::shared_ptr<rclcpp_action::ServerGoalHandle<SetOutput>> goal_handle) -> rclcpp_action::CancelResponse
             {
-                return this->handle_set_io_cancel(goal_handle);
+                return this->handle_set_output_cancel(goal_handle);
             },
-            [this](const std::shared_ptr<rclcpp_action::ServerGoalHandle<SetIO>> goal_handle) -> void
+            // Accepted Callback
+            [this](const std::shared_ptr<rclcpp_action::ServerGoalHandle<SetOutput>> goal_handle) -> void
             {
-                this->execute_set_io(goal_handle);
+                this->execute_set_output(goal_handle);
             },
             serverOptions,
             action_callback_group_);
 
-        // Action Server for GetIO
-        get_io_server_ = rclcpp_action::create_server<GetIO>(
+        // Action Server for GetInput
+        get_input_server_ = rclcpp_action::create_server<GetInput>(
             this->get_node_base_interface(),
             this->get_node_clock_interface(),
             this->get_node_logging_interface(),
             this->get_node_waitables_interface(),
-            "get_io",
+            "get_input",
+            // Goal Callback
             [this](const rclcpp_action::GoalUUID &uuid,
-                   std::shared_ptr<const GetIO::Goal> goal) -> rclcpp_action::GoalResponse
+                   std::shared_ptr<const GetInput::Goal> goal) -> rclcpp_action::GoalResponse
             {
-                return this->handle_get_io_goal(uuid, goal);
+                return this->handle_get_input_goal(uuid, goal);
             },
-            [this](std::shared_ptr<rclcpp_action::ServerGoalHandle<GetIO>> goal_handle) -> rclcpp_action::CancelResponse
+            // Cancel Callback
+            [this](std::shared_ptr<rclcpp_action::ServerGoalHandle<GetInput>> goal_handle) -> rclcpp_action::CancelResponse
             {
-                return this->handle_get_io_cancel(goal_handle);
+                return this->handle_get_input_cancel(goal_handle);
             },
-            [this](const std::shared_ptr<rclcpp_action::ServerGoalHandle<GetIO>> goal_handle) -> void
+            // Accepted Callback
+            [this](const std::shared_ptr<rclcpp_action::ServerGoalHandle<GetInput>> goal_handle) -> void
             {
-                this->execute_get_io(goal_handle);
+                this->execute_get_input(goal_handle);
             },
             serverOptions,
             action_callback_group_);
@@ -225,18 +231,46 @@ namespace manymove_signals
             this->get_node_logging_interface(),
             this->get_node_waitables_interface(),
             "reset_robot_state",
+            // Goal Callback
             [this](const rclcpp_action::GoalUUID &uuid,
                    std::shared_ptr<const ResetRobotState::Goal> goal) -> rclcpp_action::GoalResponse
             {
                 return this->handle_reset_robot_state_goal(uuid, goal);
             },
+            // Cancel Callback
             [this](std::shared_ptr<rclcpp_action::ServerGoalHandle<ResetRobotState>> goal_handle) -> rclcpp_action::CancelResponse
             {
                 return this->handle_reset_robot_state_cancel(goal_handle);
             },
+            // Accepted Callback
             [this](const std::shared_ptr<rclcpp_action::ServerGoalHandle<ResetRobotState>> goal_handle) -> void
             {
                 this->execute_reset_robot_state(goal_handle);
+            },
+            serverOptions,
+            action_callback_group_);
+
+        check_robot_state_server_ = rclcpp_action::create_server<CheckRobotState>(
+            this->get_node_base_interface(),
+            this->get_node_clock_interface(),
+            this->get_node_logging_interface(),
+            this->get_node_waitables_interface(),
+            "check_robot_state",
+            // Goal Callback
+            [this](const rclcpp_action::GoalUUID &uuid,
+                   std::shared_ptr<const CheckRobotState::Goal> goal)
+            {
+                return this->handle_check_robot_state_goal(uuid, goal);
+            },
+            // Cancel Callback
+            [this](std::shared_ptr<rclcpp_action::ServerGoalHandle<CheckRobotState>> goal_handle)
+            {
+                return this->handle_check_robot_state_cancel(goal_handle);
+            },
+            // Accepted Callback
+            [this](const std::shared_ptr<rclcpp_action::ServerGoalHandle<CheckRobotState>> goal_handle)
+            {
+                this->execute_check_robot_state(goal_handle);
             },
             serverOptions,
             action_callback_group_);
@@ -253,6 +287,11 @@ namespace manymove_signals
         else if (robot_model_ == "xarm")
         {
             robot_states_topic = "/xarm/robot_states";
+        }
+        else
+        {
+            RCLCPP_ERROR(this->get_logger(), "Unsupported robot model: %s", robot_model_.c_str());
+            throw std::runtime_error("Unsupported robot model");
         }
 
         rclcpp::SubscriptionOptions options;
@@ -274,14 +313,13 @@ namespace manymove_signals
         current_robot_state_ = msg;
     }
 
-    // ----------- SetIO Action Callbacks -----------
+    // ----------- SetOutput Action Callbacks -----------
 
-    rclcpp_action::GoalResponse SignalsNode::handle_set_io_goal(
-        const rclcpp_action::GoalUUID &uuid,
-        std::shared_ptr<const SetIO::Goal> goal)
+    rclcpp_action::GoalResponse SignalsNode::handle_set_output_goal(
+        [[maybe_unused]] const rclcpp_action::GoalUUID &uuid,
+        std::shared_ptr<const SetOutput::Goal> goal)
     {
-        (void)uuid;
-        RCLCPP_INFO(this->get_logger(), "Received SetIO goal: io_type=%s, ionum=%d, value=%d",
+        RCLCPP_INFO(this->get_logger(), "Received SetOutput goal: io_type=%s, ionum=%d, value=%d",
                     goal->io_type.c_str(), goal->ionum, goal->value);
         // Validate io_type
         if (goal->io_type != "tool" && goal->io_type != "controller")
@@ -293,20 +331,19 @@ namespace manymove_signals
         return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
     }
 
-    rclcpp_action::CancelResponse SignalsNode::handle_set_io_cancel(
-        const std::shared_ptr<rclcpp_action::ServerGoalHandle<SetIO>> goal_handle)
+    rclcpp_action::CancelResponse SignalsNode::handle_set_output_cancel(
+        [[maybe_unused]] const std::shared_ptr<rclcpp_action::ServerGoalHandle<SetOutput>> goal_handle)
     {
-        RCLCPP_INFO(this->get_logger(), "Received request to cancel SetIO goal");
-        (void)goal_handle;
+        RCLCPP_INFO(this->get_logger(), "Received request to cancel SetOutput goal");
         return rclcpp_action::CancelResponse::ACCEPT;
     }
 
-    void SignalsNode::execute_set_io(
-        const std::shared_ptr<rclcpp_action::ServerGoalHandle<SetIO>> goal_handle)
+    void SignalsNode::execute_set_output(
+        const std::shared_ptr<rclcpp_action::ServerGoalHandle<SetOutput>> goal_handle)
     {
-        RCLCPP_INFO(this->get_logger(), "Executing SetIO goal");
+        RCLCPP_INFO(this->get_logger(), "Executing SetOutput goal");
         auto goal = goal_handle->get_goal();
-        auto result = std::make_shared<SetIO::Result>();
+        auto result = std::make_shared<SetOutput::Result>();
 
         // Create the service request
         auto request = std::make_shared<xarm_msgs::srv::SetDigitalIO::Request>();
@@ -332,31 +369,30 @@ namespace manymove_signals
                                        auto response = future_response.get();
                                        if (response->ret == 0)
                                        {
-                                           RCLCPP_INFO(this->get_logger(), "SetIO succeeded for io_type=%s, ionum=%d",
+                                           RCLCPP_INFO(this->get_logger(), "SetOutput succeeded for io_type=%s, ionum=%d",
                                                        goal_handle->get_goal()->io_type.c_str(), goal_handle->get_goal()->ionum);
                                            result->success = true;
-                                           result->message = "SetIO succeeded";
+                                           result->message = "SetOutput succeeded";
                                            goal_handle->succeed(result);
                                        }
                                        else
                                        {
-                                           RCLCPP_ERROR(this->get_logger(), "SetIO failed with ret=%d for io_type=%s, ionum=%d",
+                                           RCLCPP_ERROR(this->get_logger(), "SetOutput failed with ret=%d for io_type=%s, ionum=%d",
                                                         response->ret, goal_handle->get_goal()->io_type.c_str(), goal_handle->get_goal()->ionum);
                                            result->success = false;
-                                           result->message = "SetIO failed with ret=" + std::to_string(response->ret);
+                                           result->message = "SetOutput failed with ret=" + std::to_string(response->ret);
                                            goal_handle->abort(result);
                                        }
                                    });
     }
 
-    // ----------- GetIO Action Callbacks -----------
+    // ----------- GetInput Action Callbacks -----------
 
-    rclcpp_action::GoalResponse SignalsNode::handle_get_io_goal(
-        const rclcpp_action::GoalUUID &uuid,
-        std::shared_ptr<const GetIO::Goal> goal)
+    rclcpp_action::GoalResponse SignalsNode::handle_get_input_goal(
+        [[maybe_unused]] const rclcpp_action::GoalUUID &uuid,
+        std::shared_ptr<const GetInput::Goal> goal)
     {
-        (void)uuid;
-        RCLCPP_INFO(this->get_logger(), "Received GetIO goal: io_type=%s, ionum=%d",
+        RCLCPP_INFO(this->get_logger(), "Received GetInput goal: io_type=%s, ionum=%d",
                     goal->io_type.c_str(), goal->ionum);
         // Validate io_type
         if (goal->io_type != "tool" && goal->io_type != "controller")
@@ -364,24 +400,23 @@ namespace manymove_signals
             RCLCPP_ERROR(this->get_logger(), "Invalid io_type: %s. Must be 'tool' or 'controller'.", goal->io_type.c_str());
             return rclcpp_action::GoalResponse::REJECT;
         }
-        // Optionally, validate ionum based on io_type
+        // TODO: validate ionum based on io_type?
         return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
     }
 
-    rclcpp_action::CancelResponse SignalsNode::handle_get_io_cancel(
-        const std::shared_ptr<rclcpp_action::ServerGoalHandle<GetIO>> goal_handle)
+    rclcpp_action::CancelResponse SignalsNode::handle_get_input_cancel(
+        [[maybe_unused]] const std::shared_ptr<rclcpp_action::ServerGoalHandle<GetInput>> goal_handle)
     {
-        RCLCPP_INFO(this->get_logger(), "Received request to cancel GetIO goal");
-        (void)goal_handle;
+        RCLCPP_INFO(this->get_logger(), "Received request to cancel GetInput goal");
         return rclcpp_action::CancelResponse::ACCEPT;
     }
 
-    void SignalsNode::execute_get_io(
-        const std::shared_ptr<rclcpp_action::ServerGoalHandle<GetIO>> goal_handle)
+    void SignalsNode::execute_get_input(
+        const std::shared_ptr<rclcpp_action::ServerGoalHandle<GetInput>> goal_handle)
     {
-        RCLCPP_INFO(this->get_logger(), "Executing GetIO goal");
+        RCLCPP_INFO(this->get_logger(), "Executing GetInput goal");
         auto goal = goal_handle->get_goal();
-        auto result = std::make_shared<GetIO::Result>();
+        auto result = std::make_shared<GetInput::Result>();
 
         // Create the service request (empty)
         auto request = std::make_shared<xarm_msgs::srv::GetDigitalIO::Request>();
@@ -408,7 +443,7 @@ namespace manymove_signals
                                            // Validate ionum
                                            if (goal->ionum < 0 || goal->ionum >= static_cast<int16_t>(response->digitals.size()))
                                            {
-                                               RCLCPP_ERROR(this->get_logger(), "GetIO failed: ionum=%d out of range", goal->ionum);
+                                               RCLCPP_ERROR(this->get_logger(), "GetInput failed: ionum=%d out of range", goal->ionum);
                                                result->success = false;
                                                result->message = "ionum out of range";
                                                goal_handle->abort(result);
@@ -419,21 +454,22 @@ namespace manymove_signals
                                            int16_t raw_value = response->digitals[goal->ionum];
                                            int16_t value;
 
+                                           // Ufactory robots' inputs are ON when set their value is 0, which is te opposite uf usual I/O signals
                                            // Inversion logic: 0 -> 1 (ON), else 0 (OFF)
                                            value = (raw_value == 0) ? 1 : 0;
 
-                                           RCLCPP_INFO(this->get_logger(), "GetIO succeeded: io_type=%s, ionum=%d, value=%d",
+                                           RCLCPP_INFO(this->get_logger(), "GetInput succeeded: io_type=%s, ionum=%d, value=%d",
                                                        goal->io_type.c_str(), goal->ionum, value);
                                            result->success = true;
                                            result->value = value;
-                                           result->message = "GetIO succeeded";
+                                           result->message = "GetInput succeeded";
                                            goal_handle->succeed(result);
                                        }
                                        else
                                        {
-                                           RCLCPP_ERROR(this->get_logger(), "GetIO failed with ret=%d", response->ret);
+                                           RCLCPP_ERROR(this->get_logger(), "GetInput failed with ret=%d", response->ret);
                                            result->success = false;
-                                           result->message = "GetIO failed with ret=" + std::to_string(response->ret);
+                                           result->message = "GetInput failed with ret=" + std::to_string(response->ret);
                                            goal_handle->abort(result);
                                        }
                                    });
@@ -442,19 +478,17 @@ namespace manymove_signals
     // ----------- ResetRobotState Action Callbacks -----------
 
     rclcpp_action::GoalResponse SignalsNode::handle_reset_robot_state_goal(
-        const rclcpp_action::GoalUUID &uuid,
+        [[maybe_unused]] const rclcpp_action::GoalUUID &uuid,
         std::shared_ptr<const ResetRobotState::Goal> goal)
     {
-        (void)uuid;
         RCLCPP_INFO(this->get_logger(), "Received ResetRobotState goal");
         return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
     }
 
     rclcpp_action::CancelResponse SignalsNode::handle_reset_robot_state_cancel(
-        const std::shared_ptr<rclcpp_action::ServerGoalHandle<ResetRobotState>> goal_handle)
+        [[maybe_unused]] const std::shared_ptr<rclcpp_action::ServerGoalHandle<ResetRobotState>> goal_handle)
     {
         RCLCPP_INFO(this->get_logger(), "Received request to cancel ResetRobotState goal");
-        (void)goal_handle;
         return rclcpp_action::CancelResponse::ACCEPT;
     }
 
@@ -520,7 +554,8 @@ namespace manymove_signals
         std::shared_ptr<ResetRobotState::Result> result)
     {
         auto set_mode_req = std::make_shared<xarm_msgs::srv::SetInt16::Request>();
-        set_mode_req->data = 1; // As per the user's explanation
+        // With xarm_planner mode would be 0, but with xarm_moveit_config and manymove_planner packages the mode to use is 1.
+        set_mode_req->data = 1;
 
         set_int16_clients_["mode"]->async_send_request(set_mode_req,
                                                        [this, goal_handle, result](rclcpp::Client<xarm_msgs::srv::SetInt16>::SharedFuture future_response)
@@ -574,7 +609,7 @@ namespace manymove_signals
         std::shared_ptr<ResetRobotState::Result> result)
     {
         // Define the number of attempts and interval
-        const int max_attempts = 3;
+        const int max_attempts = 5;
         const std::chrono::milliseconds interval(200);
 
         for (int attempt = 1; attempt <= max_attempts; ++attempt)
@@ -643,6 +678,63 @@ namespace manymove_signals
         result->success = false;
         result->message = "ResetRobotState verification failed after " + std::to_string(max_attempts) + " attempts.";
         goal_handle->abort(result);
+    }
+
+    // ----------- CheckRobotState Action Callbacks -----------
+
+    rclcpp_action::GoalResponse SignalsNode::handle_check_robot_state_goal(
+        [[maybe_unused]] const rclcpp_action::GoalUUID &uuid,
+        [[maybe_unused]] std::shared_ptr<const CheckRobotState::Goal> goal)
+    {
+        RCLCPP_INFO(this->get_logger(), "Received CheckRobotState goal");
+        return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
+    }
+
+    rclcpp_action::CancelResponse SignalsNode::handle_check_robot_state_cancel(
+        [[maybe_unused]] const std::shared_ptr<rclcpp_action::ServerGoalHandle<CheckRobotState>> goal_handle)
+    {
+        RCLCPP_INFO(this->get_logger(), "Received request to cancel CheckRobotState goal");
+        return rclcpp_action::CancelResponse::ACCEPT;
+    }
+
+    void SignalsNode::execute_check_robot_state(
+        const std::shared_ptr<rclcpp_action::ServerGoalHandle<CheckRobotState>> goal_handle)
+    {
+        RCLCPP_INFO(this->get_logger(), "Executing CheckRobotState goal");
+
+        auto result = std::make_shared<CheckRobotState::Result>();
+
+        // Access current_robot_state_
+        {
+            std::lock_guard<std::mutex> lock(robot_state_mutex_);
+            if (!current_robot_state_)
+            {
+                RCLCPP_ERROR(this->get_logger(), "No robot state information available");
+                result->ready = false;
+                result->err = -1;
+                result->mode = -1;
+                result->state = -1;
+                result->message = "No robot state available";
+                goal_handle->succeed(result);
+                return;
+            }
+
+            // Extract robot state
+            result->err = current_robot_state_->err;
+            result->mode = current_robot_state_->mode;
+            result->state = current_robot_state_->state;
+
+            // Determine readiness
+            result->ready = (result->err == 0 && result->mode == 1 && result->state <= 2);
+
+            // Create a message
+            result->message = result->ready ? "Robot is ready" : "Robot is not ready";
+        }
+
+        RCLCPP_INFO(this->get_logger(), "CheckRobotState result: ready=%d, err=%d, mode=%d, state=%d, message=%s",
+                    result->ready, result->err, result->mode, result->state, result->message.c_str());
+
+        goal_handle->succeed(result);
     }
 
 } // namespace manymove_signals

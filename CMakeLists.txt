@@ -17,8 +17,9 @@ find_package(rosidl_default_generators REQUIRED)
 
 # Generate actions
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "action/SetIO.action"
-  "action/GetIO.action"
+  "action/SetOutput.action"
+  "action/GetInput.action"
+  "action/CheckRobotState.action"
   "action/ResetRobotState.action"
   DEPENDENCIES xarm_msgs action_msgs
 )
