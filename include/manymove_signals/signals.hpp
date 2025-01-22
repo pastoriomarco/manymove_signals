@@ -43,6 +43,7 @@ namespace manymove_signals
     private:
         // Member Variables
         std::string robot_model_;
+        std::string robot_prefix_;
 
         // Service Clients
         std::map<std::string, rclcpp::Client<xarm_msgs::srv::SetDigitalIO>::SharedPtr> set_digital_io_clients_;

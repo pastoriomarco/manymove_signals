@@ -12,6 +12,11 @@ def generate_launch_description():
             default_value='lite6',
             description='Model of the robot (e.g., lite6, uf850, xarm)'
         ),
+        DeclareLaunchArgument(
+            'robot_prefix',
+            default_value='',
+            description='Prefix for the robot model'
+        ),
 
         Node(
             package='manymove_signals',
@@ -19,7 +24,8 @@ def generate_launch_description():
             name='manymove_signals_node',
             output='screen',
             parameters=[{
-                'robot_model': LaunchConfiguration('robot_model')
+                'robot_model': LaunchConfiguration('robot_model'),
+                'robot_prefix': LaunchConfiguration('robot_prefix')
             }]
         )
     ])

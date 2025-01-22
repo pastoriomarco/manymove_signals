@@ -10,6 +10,9 @@ namespace manymove_signals
         this->declare_parameter<std::string>("robot_model", "lite6"); // defaults to lite6; TODO: add parameters for prefix
         this->get_parameter("robot_model", robot_model_);
 
+        this->declare_parameter<std::string>("robot_prefix", ""); 
+        this->get_parameter("robot_prefix", robot_prefix_);
+
         // Define Callback Groups
         action_callback_group_ = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
         service_callback_group_ = this->create_callback_group(rclcpp::CallbackGroupType::Reentrant);
@@ -41,11 +44,12 @@ namespace manymove_signals
         std::string namespace_prefix;
         if (robot_model_ == "lite6" || robot_model_ == "uf850")
         {
-            namespace_prefix = "/ufactory";
+            namespace_prefix = "/" + robot_prefix_ + "ufactory";
+            RCLCPP_INFO(this->get_logger(), namespace_prefix.c_str());
         }
         else if (robot_model_ == "xarm")
         {
-            namespace_prefix = "/xarm";
+            namespace_prefix = "/" + robot_prefix_ + "xarm";
         }
         else
         {
@@ -178,7 +182,7 @@ namespace manymove_signals
             this->get_node_clock_interface(),
             this->get_node_logging_interface(),
             this->get_node_waitables_interface(),
-            "set_output",
+            robot_prefix_ + "set_output",
             // Goal Callback
             [this](const rclcpp_action::GoalUUID &uuid,
                    std::shared_ptr<const SetOutput::Goal> goal) -> rclcpp_action::GoalResponse
@@ -204,7 +208,7 @@ namespace manymove_signals
             this->get_node_clock_interface(),
             this->get_node_logging_interface(),
             this->get_node_waitables_interface(),
-            "get_input",
+            robot_prefix_ + "get_input",
             // Goal Callback
             [this](const rclcpp_action::GoalUUID &uuid,
                    std::shared_ptr<const GetInput::Goal> goal) -> rclcpp_action::GoalResponse
@@ -230,7 +234,7 @@ namespace manymove_signals
             this->get_node_clock_interface(),
             this->get_node_logging_interface(),
             this->get_node_waitables_interface(),
-            "reset_robot_state",
+            robot_prefix_ + "reset_robot_state",
             // Goal Callback
             [this](const rclcpp_action::GoalUUID &uuid,
                    std::shared_ptr<const ResetRobotState::Goal> goal) -> rclcpp_action::GoalResponse
@@ -255,7 +259,7 @@ namespace manymove_signals
             this->get_node_clock_interface(),
             this->get_node_logging_interface(),
             this->get_node_waitables_interface(),
-            "check_robot_state",
+            robot_prefix_ + "check_robot_state",
             // Goal Callback
             [this](const rclcpp_action::GoalUUID &uuid,
                    std::shared_ptr<const CheckRobotState::Goal> goal)
@@ -282,11 +286,11 @@ namespace manymove_signals
         std::string robot_states_topic;
         if (robot_model_ == "lite6" || robot_model_ == "uf850")
         {
-            robot_states_topic = "/ufactory/robot_states";
+            robot_states_topic = "/" + robot_prefix_ + "ufactory/robot_states";
         }
         else if (robot_model_ == "xarm")
         {
-            robot_states_topic = "/xarm/robot_states";
+            robot_states_topic = "/" + robot_prefix_ + "xarm/robot_states";
         }
         else
         {
