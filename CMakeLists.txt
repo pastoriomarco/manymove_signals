@@ -15,7 +15,7 @@ find_package(xarm_msgs REQUIRED)
 find_package(manymove_planner REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
-# Generate actions
+# Generate actions with both C and C++ type support
 rosidl_generate_interfaces(${PROJECT_NAME}
   "action/SetOutput.action"
   "action/GetInput.action"
@@ -44,6 +44,13 @@ ament_target_dependencies(signals_node
 
 # Get the typesupport target for linking
 rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
+
+# Get the typesupport target for C
+rosidl_get_typesupport_target(c_typesupport_target ${PROJECT_NAME} "rosidl_typesupport_c")
+
+# Link C and C++ typesupport libraries
+target_link_libraries(signals_node ${cpp_typesupport_target} ${c_typesupport_target})
+
 
 # Link generated action libraries
 target_link_libraries(signals_node ${cpp_typesupport_target})
